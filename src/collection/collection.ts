@@ -1,23 +1,66 @@
-import { ObjectKeys, ObjectEntries } from "../object/object";
+import { assert } from "../assert/assert";
+import { ObjectEntries } from "../object/object";
 
 export class Collection<K extends PropertyKey, I> {
   private _items: Record<K, I>;
+  private _itemOrder: K[];
 
   public constructor(public keyGenerator?: (item: I) => K) {
     this._items = {} as Record<K, I>;
+    this._itemOrder = [];
   }
 
-  public add(item: I): K {
-    if (this.keyGenerator === undefined) {
-      throw "No key generator specified. Specify one in the construction of this Collection or provide the keys manually with the set() function.";
+  public append(item: I, key?: K): K {
+    if (key === undefined) {
+      if( this.keyGenerator === undefined) {
+        throw "No key or key generator specified. Specify a key, or a key-generator in the construction of this Collection or provide the keys manually with the set() function.";
+      }
+      key = this.keyGenerator(item);
     }
-    const key = this.keyGenerator(item);
+    assert(this._items[key] === undefined, `key (${String(key)}) already exists`)
     this._items[key] = item;
+    this._itemOrder.push(key)
     return key;
   }
 
-  public set(key: K, item: I): void {
+  public prepend(item: I, key?: K): K {
+    if (key === undefined) {
+      if( this.keyGenerator === undefined) {
+        throw "No key or key generator specified. Specify a key, or a key-generator in the construction of this Collection or provide the keys manually with the set() function.";
+      }
+      key = this.keyGenerator(item);
+    }
+    assert(this._items[key] === undefined, `key (${String(key)}) already exists`)
     this._items[key] = item;
+    this._itemOrder.unshift(key)
+    return key;
+  }
+
+  public overwrite(key: K, item: I): void {
+    assert(this._items[key] !== undefined, `key (${String(key)}) does not exist`)
+    this._items[key] = item;
+  }
+
+  public set(key: K, item: I): void {
+    if(this._items[key] !== undefined){
+      this.insert(item, key);
+    }
+    else{
+      this._items[key] = item;
+    }
+  }
+
+  public insert(item: I, key?: K): K {
+    if (key === undefined) {
+      if( this.keyGenerator === undefined) {
+        throw "No key or key generator specified. Specify a key, or a key-generator in the construction of this Collection or provide the keys manually with the set() function.";
+      }
+      key = this.keyGenerator(item);
+    }
+    assert(this._items[key] === undefined, `key (${String(key)}) already exists`)
+    this._items[key] = item;
+    this._itemOrder.push(key)
+    return key;
   }
 
   public get(key: K): I | null {
@@ -36,8 +79,15 @@ export class Collection<K extends PropertyKey, I> {
     return null;
   }
 
-  public clear(): void {
+  public clear(): number {
+    const itemCount = this._itemOrder.length;
     this._items = {} as Record<K, I>;
+    this._itemOrder = [];
+    return itemCount;
+  }
+
+  public count(): number {
+    return this._itemOrder.length;
   }
 
   public keyOf(item: I): K | null {
@@ -45,7 +95,7 @@ export class Collection<K extends PropertyKey, I> {
   }
 
   public keys(): K[] {
-    return ObjectKeys(this._items);
+    return this._itemOrder;
   }
 
   public items(): I[] {
